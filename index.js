@@ -1,9 +1,13 @@
 const fs = require("fs");
 const express = require("express");
+const bodyParser = require("body-parser");
 const { resolveSoa } = require("dns");
+const e = require("express");
+
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({extended: true}));
+app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.json());
+app.use(bodyParser.text());
 
 String.prototype.format = function() {
     var result = this;
@@ -11,6 +15,31 @@ String.prototype.format = function() {
         result = result.replace("{}", arguments[ind]);
     }
     return result;
+}
+
+String.prototype.multiSplit = function() {
+    // arguments = seperator
+    var origin = this;
+    let seperator = Array.from(arguments);
+    let split = [];
+    let current = "";
+    for (let ind = 0; ind < origin.length; ind++) {
+        let char = origin.charAt([ind]);
+        if (seperator.indexOf(char) == -1) {
+            // string splitted
+            current = current + char;
+            if (ind == origin.length - 1) { // 마지막이라면
+                split.push(current);
+                current = "";
+            }
+        } else {
+            // seperator
+            split.push(current); // 이전에 완성된 문자열을 넣어줌
+            split.push(char); // 자기 자신을 넣어줌
+            current = "";
+        }
+    }
+    return split;
 }
 
 app.get("/", (req, res) => {
@@ -173,6 +202,89 @@ app.post("/add", (req, res) => {
         }
     } else {
         res.send("please enter the path!");
+    }
+});
+
+app.post("/calc", (req, res) => { // 헤더 : application/x-www-
+    let operation = req.body.operation;
+    let a = req.body.a;
+    let b = req.body.b;
+
+    if (operation != null) {
+        if (a != null && b != null) {
+            if (isNaN(a) == false && isNaN(b) == false) {
+                let result = 0;
+                switch (operation) {
+                    case " ": // 더하기 (+는 띄어쓰기로 처리되서 안됨, 예시로 song+name 등 띄어쓰기 처리)
+                        result = Number(a) + Number(b);
+                        break;
+                    case "-": // 빼기
+                        result = Number(a) - Number(b);
+                        break;
+                    case "*": // 곱하기
+                        result = Number(a) * Number(b);
+                        break;
+                    case "/": // 나누기
+                        if (Number(b) != 0) {
+                            result = Number(a) / Number(b);
+                        } else {
+                            result = null;
+                            res.send("cannot divide into 0");
+                        }
+                        break;
+                    default:
+                        result = null;
+                        res.send("not supporting operation");
+                        break;
+                }
+
+                if (result != null) {
+                    res.send("operation: " + operation + ", result: " + result);
+                }
+            } else {
+                res.send("a or b is not number");
+            }
+        } else {
+            let resa = "";
+            let resb = "";
+            if (a == null) {
+                resa = "a: null "
+            }
+            if (b == null) {
+                resb = "b: null "
+            }
+            res.send("a or b is not given! " + resa + resb);
+        }
+    } else {
+        res.send("operation not set");
+    }
+});
+
+app.post("/operation", (req, res) => { // 헤더 : text/plain
+    let origin = req.body;
+    if (origin != null) { // 받은 문자열이 있으면?
+        let result = null;
+        let error = null;
+        let operators = ["+", "-", "*", "/", "(", ")", "{", "}", "[", "]"];
+        let split = origin.multiSplit("+", "-", "*", "/", "(", ")", "{", "}", "[", "]");
+        for (let ind in split) { // 스플릿 된 거를 숫자로 변환
+            if (isNaN(split[ind]) == false) { // 숫자라면
+                split[ind] = Number(split[ind]); // 숫자로 변환
+            } else if (operators.indexOf(split[ind]) == -1) { // 숫자 아닌데 연산자도 아니라면
+                result = null;
+                error = "not supported operator"
+                break;
+            }
+        }
+        console.log(split);
+        
+        if (result != null) {
+            res.send("result: " + result);
+        } else {
+            res.send("error occured");
+        }
+    } else {
+        res.send("operation not set");
     }
 });
 
