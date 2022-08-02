@@ -34,7 +34,9 @@ String.prototype.multiSplit = function() {
             }
         } else {
             // seperator
-            split.push(current); // 이전에 완성된 문자열을 넣어줌
+            if (current.length != 0) {
+                split.push(current); // 이전에 완성된 문자열을 넣어줌
+            }
             split.push(char); // 자기 자신을 넣어줌
             current = "";
         }
@@ -265,28 +267,61 @@ app.post("/operation", (req, res) => { // 헤더 : text/plain
     if (origin != null) { // 받은 문자열이 있으면?
         let result = null;
         let error = null;
-        let operators = ["+", "-", "*", "/", "(", ")", "{", "}", "[", "]"];
-        let split = origin.multiSplit("+", "-", "*", "/", "(", ")", "{", "}", "[", "]");
+        let operators = ["+", "-", "*", "/", "(", ")"];
+        let split = origin.multiSplit("+", "-", "*", "/", "(", ")");
+        let openerCount = 0;
+        let closerCount = 0;
+        console.log(split);
         for (let ind in split) { // 스플릿 된 거를 숫자로 변환
+            console.log(split[ind]);
             if (isNaN(split[ind]) == false) { // 숫자라면
                 split[ind] = Number(split[ind]); // 숫자로 변환
-            } else if (operators.indexOf(split[ind]) == -1) { // 숫자 아닌데 연산자도 아니라면
-                result = null;
-                error = "not supported operator"
+            } else if (operators.indexOf(split[ind]) != 1) { // 연산자라면
+                if (split[ind] == "(") {
+                    openerCount++;
+                } else if (split[ind] == ")") {
+                    closerCount++;
+                }
+            }
+            else { // 숫자 아닌데 연산자도 아니라면
+                error = "not supported operator";
+                console.log("error: " + error + ", " + split[ind]);
                 break;
             }
         }
-        console.log(split);
-        
+        if (openerCount != closerCount) {
+            error = "invalid braces: " + openerCount + ", " + closerCount;
+        }
+
+        if (error == null) {
+            // 괄호 수가 맞는 지 검색
+            const calculate = (data) => {
+            
+            }
+        }
+
         if (result != null) {
             res.send("result: " + result);
         } else {
-            res.send("error occured");
+            if (error != null) {
+                res.send("error: " + error);
+            } else {
+                res.send("error occured");
+            }
         }
     } else {
         res.send("operation not set");
     }
 });
+
+app.get("/naver", (req, res) => {
+    res.send("");
+});
+
+console.log(__dirname);
+app.use("/operation", express.static(__dirname + "/pages/calc"));
+//app.use("/operation", express.static(__dirname + "/pages/calculator/public/index.html"));
+app.use("/naver", express.static(__dirname + "/pages/naver"));
 
 let server = app.listen(8888, () => {
     console.log("Server is running now");
