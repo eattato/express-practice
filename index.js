@@ -271,9 +271,8 @@ app.post("/operation", (req, res) => { // 헤더 : text/plain
         let split = origin.multiSplit("+", "-", "*", "/", "(", ")");
         let openerCount = 0;
         let closerCount = 0;
-        console.log(split);
+        //console.log(split);
         for (let ind in split) { // 스플릿 된 거를 숫자로 변환
-            console.log(split[ind]);
             if (isNaN(split[ind]) == false) { // 숫자라면
                 split[ind] = Number(split[ind]); // 숫자로 변환
             } else if (operators.indexOf(split[ind]) != 1) { // 연산자라면
@@ -294,10 +293,90 @@ app.post("/operation", (req, res) => { // 헤더 : text/plain
         }
 
         if (error == null) {
-            // 괄호 수가 맞는 지 검색
             const calculate = (data) => {
-            
+                console.log(data);
+                let error = null;
+                let open = -1;
+                let close = -1;
+                let currentOpened = 0;
+                for (let ind = 0; ind < data.length; ind++) {
+                    if (data[ind] == "(") {
+                        if (currentOpened == 0) {
+                            open = ind;
+                        }
+                        currentOpened++;
+                    } else if (data[ind] == ")") {
+                        currentOpened--;
+                        if (currentOpened == 0) {
+                            close = ind;
+                            break;
+                        }
+                    }
+
+                    if (currentOpened < 0) { // 열린게 없는데도 닫으면
+                        error = "invalid braces";
+                        console.log("invalid braces");
+                        break;
+                    }
+                }
+
+                if (error == null) {
+                    if (currentOpened > 0) { // 다 닫아도 안 닫힌게 있으면
+                        error = "invalid braces";
+                        console.log("invalid braces");
+                    } else if (open != -1 && close != -1) { // 괄호가 잘 되어있는 상태면
+                        console.log("calculating braces..");
+                        let result = calculate(data.slice(open, close + 1));
+                        data.splice(open, close - open + 1, result); // 괄호 안을 계산
+                    } else if (open == -1 && close == -1) { // 괄호가 없으면
+                        console.log("calculating numbers..");
+                        while (data.length > 1) {
+                            // 곱, 나누기
+                            for (let ind = 0; ind < data.length; ind++) {
+                                let result = 0;
+                                if (data[ind] == "*" || data[ind] == "/") {
+                                    if (data[ind] == "*") {
+                                        result = data[ind - 1] * data[ind + 1];
+                                    } else if (data[ind] == "/") {
+                                        result = data[ind - 1] / data[ind + 1];
+                                    }
+                                    data.splice(ind - 1, 3, result); // 두 개를 연산한 걸로 교체(3개인 이유는 연산자까지..)
+                                    break;
+                                }
+                            }
+                            // 덧셈, 뺄셈
+                            for (let ind = 0; ind < data.length; ind++) {
+                                let result = 0;
+                                if (data[ind] == "+" || data[ind] == "-") {
+                                    if (data[ind] == "+") {
+                                        result = data[ind - 1] + data[ind + 1];
+                                    } else if (data[ind] == "-") {
+                                        result = data[ind - 1] - data[ind + 1];
+                                    }
+                                    data.splice(ind - 1, 3, result); // 두 개를 연산한 걸로 교체(3개인 이유는 연산자까지..)
+                                    break;
+                                }
+                            }
+                        }
+                        console.log("calculate done: " + data[0]);
+                    } else {
+                        console.log("error unknown, " + open + ", " + close);
+                        error = "unknown";
+                    }
+                } else {
+                    console.log("error occured on calculation");
+                }
+
+                if (error != null) {
+                    result = null;
+                }
+                return [result, error];
             }
+
+            let done = calculate(split);
+            result = done[0];
+            error = done[1];
+            console.log("calculating done");
         }
 
         if (result != null) {
