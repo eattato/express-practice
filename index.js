@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { resolveSoa } = require("dns");
 const e = require("express");
+const { Console } = require("console");
 
 const app = express();
 app.use(bodyParser.urlencoded({extended: false}));
@@ -273,9 +274,10 @@ app.post("/operation", (req, res) => { // 헤더 : text/plain
         let closerCount = 0;
         //console.log(split);
         for (let ind in split) { // 스플릿 된 거를 숫자로 변환
+            //console.log(split[ind]);
             if (isNaN(split[ind]) == false) { // 숫자라면
                 split[ind] = Number(split[ind]); // 숫자로 변환
-            } else if (operators.indexOf(split[ind]) != 1) { // 연산자라면
+            } else if (operators.indexOf(split[ind]) != -1) { // 연산자라면
                 if (split[ind] == "(") {
                     openerCount++;
                 } else if (split[ind] == ")") {
@@ -294,93 +296,150 @@ app.post("/operation", (req, res) => { // 헤더 : text/plain
 
         if (error == null) {
             const calculate = (data) => {
-                console.log(data);
+                //console.log(data + ", " + typeof data);
                 let error = null;
                 let open = -1;
                 let close = -1;
                 let currentOpened = 0;
-                for (let ind = 0; ind < data.length; ind++) {
-                    if (data[ind] == "(") {
-                        if (currentOpened == 0) {
-                            open = ind;
+                
+                if (typeof data != "number" && data.length > 1) {
+                    for (let ind = 0; ind < data.length; ind++) {
+                        if (data[ind] == "(") {
+                            if (currentOpened == 0) {
+                                open = ind;
+                            }
+                            currentOpened++;
+                        } else if (data[ind] == ")") {
+                            currentOpened--;
+                            if (currentOpened == 0) {
+                                close = ind;
+                                break;
+                            }
                         }
-                        currentOpened++;
-                    } else if (data[ind] == ")") {
-                        currentOpened--;
-                        if (currentOpened == 0) {
-                            close = ind;
+    
+                        if (currentOpened < 0) { // 열린게 없는데도 닫으면
+                            error = "invalid braces";
+                            console.log("invalid braces");
                             break;
                         }
                     }
-
-                    if (currentOpened < 0) { // 열린게 없는데도 닫으면
-                        error = "invalid braces";
-                        console.log("invalid braces");
-                        break;
-                    }
-                }
-
-                if (error == null) {
-                    if (currentOpened > 0) { // 다 닫아도 안 닫힌게 있으면
-                        error = "invalid braces";
-                        console.log("invalid braces");
-                    } else if (open != -1 && close != -1) { // 괄호가 잘 되어있는 상태면
-                        console.log("calculating braces..");
-                        let result = calculate(data.slice(open, close + 1));
-                        data.splice(open, close - open + 1, result); // 괄호 안을 계산
-                    } else if (open == -1 && close == -1) { // 괄호가 없으면
-                        console.log("calculating numbers..");
-                        while (data.length > 1) {
+    
+                    if (error == null) {
+                        if (currentOpened > 0) { // 다 닫아도 안 닫힌게 있으면
+                            error = "invalid braces";
+                            console.log("invalid braces");
+                        } else if (open != -1 && close != -1) { // 괄호가 잘 되어있는 상태면
+                            //console.log("calculating braces..");
+                            let calced = calculate(data.slice(open + 1, close));
+                            //console.log("braces calculated");
+                            console.log(calced);
+                            if (calced[1] == null) {
+                                //console.log("braces result: " + calced[0]);
+                                data.splice(open, close - open + 1, calced[0]); // 괄호 안을 계산
+                            } else {
+                                //console.log("braces got error");
+                                error = calced[1];
+                            }
+                        } else if (open == -1 && close == -1) { // 괄호가 없으면
+                            //console.log("calculating numbers..");
+                            //while (data.length > 1) {
                             // 곱, 나누기
-                            for (let ind = 0; ind < data.length; ind++) {
-                                let result = 0;
-                                if (data[ind] == "*" || data[ind] == "/") {
-                                    if (data[ind] == "*") {
-                                        result = data[ind - 1] * data[ind + 1];
-                                    } else if (data[ind] == "/") {
-                                        result = data[ind - 1] / data[ind + 1];
+                            let multEnded = false;
+                            while (multEnded == false) {
+                                for (let ind = 0; ind < data.length; ind++) {
+                                    let result = 0;
+                                    if (data[ind] == "*" || data[ind] == "/") {
+                                        if (data[ind] == "*") {
+                                            //console.log(data[ind - 1] + " * " + data[ind + 1]);
+                                            result = data[ind - 1] * data[ind + 1];
+                                        } else if (data[ind] == "/") {
+                                            //console.log(data[ind - 1] + " / " + data[ind + 1]);
+                                            if (data[ind + 1] == 0) {
+                                                error = "cannot divide to 0";
+                                            } else {
+                                                result = data[ind - 1] / data[ind + 1];
+                                            }
+                                        }
+                                        data.splice(ind - 1, 3, result); // 두 개를 연산한 걸로 교체(3개인 이유는 연산자까지..)
+                                        break;
+                                    } else if (ind == data.length - 1) { // 더 이상 곱셈이나 나눗셈 할 게 없으면 탈출
+                                        multEnded = true;
                                     }
-                                    data.splice(ind - 1, 3, result); // 두 개를 연산한 걸로 교체(3개인 이유는 연산자까지..)
-                                    break;
                                 }
                             }
                             // 덧셈, 뺄셈
-                            for (let ind = 0; ind < data.length; ind++) {
-                                let result = 0;
-                                if (data[ind] == "+" || data[ind] == "-") {
-                                    if (data[ind] == "+") {
-                                        result = data[ind - 1] + data[ind + 1];
-                                    } else if (data[ind] == "-") {
-                                        result = data[ind - 1] - data[ind + 1];
+                            let addEnded = false;
+                            while (addEnded == false) {
+                                for (let ind = 0; ind < data.length; ind++) {
+                                    let result = 0;
+                                    if (data[ind] == "+" || data[ind] == "-") {
+                                        if (data[ind] == "+") {
+                                            //console.log(data[ind - 1] + " + " + data[ind + 1]);
+                                            result = data[ind - 1] + data[ind + 1];
+                                        } else if (data[ind] == "-") {
+                                            //console.log(data[ind - 1] + " - " + data[ind + 1]);
+                                            result = data[ind - 1] - data[ind + 1];
+                                        }
+                                        data.splice(ind - 1, 3, result); // 두 개를 연산한 걸로 교체(3개인 이유는 연산자까지..)
+                                        //break;
+                                    } else if (ind == data.length - 1) { // 더 이상 덧셈이나 뺄셈할게 없다면 탈출
+                                        addEnded = true;
                                     }
-                                    data.splice(ind - 1, 3, result); // 두 개를 연산한 걸로 교체(3개인 이유는 연산자까지..)
-                                    break;
                                 }
                             }
+                            //}
+                            //console.log("calculate done: " + data[0] + ", left: " + (data.length - 1));
+                        } else {
+                            console.log("error unknown, " + open + ", " + close);
+                            error = "unknown";
                         }
-                        console.log("calculate done: " + data[0]);
                     } else {
-                        console.log("error unknown, " + open + ", " + close);
-                        error = "unknown";
+                        console.log("error occured on calculation");
                     }
-                } else {
-                    console.log("error occured on calculation");
                 }
 
                 if (error != null) {
                     result = null;
+                    return [null, error];
+                } else {
+                    if (typeof data != "number") {
+                        if (data.length > 1) {
+                            //console.log("calculating..");
+                            return calculate(data);
+                        } else {
+                            //console.log("calculated! " + data[0]);
+                            return [data[0], error];
+                        }
+                    } else {
+                        return [data, error];
+                    }
                 }
-                return [result, error];
             }
 
             let done = calculate(split);
+            while (true) {
+                if (done[1] == null) {
+                    if (typeof done[0] == "number") {
+                        break;
+                    } else {
+                        if (done[0].length == 1) {
+                            break;
+                        } else {
+                            done = calculate(done[0]);
+                        }
+                    }
+                } else {
+                    break;
+                }
+            }
             result = done[0];
             error = done[1];
-            console.log("calculating done");
+            //console.log("calculating done");
         }
 
         if (result != null) {
-            res.send("result: " + result);
+            //res.send("result: " + result);
+            res.send("" + result);
         } else {
             if (error != null) {
                 res.send("error: " + error);

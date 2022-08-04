@@ -6,6 +6,23 @@ const request = (act, url, ct, body) => {
     return http.responseText;
 }
 
+const keyInput = (act, input) => {
+    if (act == "remove") {
+        input = input.substring(0, input.length - 1);
+    } else if (act == "ac") {
+        input = "";
+    } else if (act == "calculate") {
+        let result = request("POST", "http://localhost:8888/operation", "text/plain", input);
+        input = result;
+        if (isNaN(result) == true) {
+            removeOnEnter = true;
+        }
+    }
+    return input;
+}
+
+var removeOnEnter = false;
+
 window.addEventListener('load', function () {
     var input = "";
     var inputDisplay = document.querySelector(".input");
@@ -22,14 +39,17 @@ window.addEventListener('load', function () {
                 }
             }
             if (special == true) {
-                if (button.classList.contains("remove")) {
-                    input = input.substring(0, input.length - 1);
-                } else if (button.classList.contains("ac")) {
-                    input = "";
-                } else if (button.classList.contains("calculate")) {
-                    input = request("POST", "http://localhost:8888/operation", "text/plain", input);
+                let specialClasses = ["remove", "ac", "calculate"];
+                for (let ind in specialClasses) {
+                    if (button.classList.contains(specialClasses[ind])) {
+                        input = keyInput(specialClasses[ind], input);
+                    }
                 }
             } else {
+                if (removeOnEnter == true) {
+                    removeOnEnter = false;
+                    input = "";
+                }
                 input = input + button.innerHTML;
             }
             inputDisplay.innerHTML = input;
@@ -37,9 +57,20 @@ window.addEventListener('load', function () {
     }
 
     document.addEventListener('keydown', (event) => {
-        if (event.keyCode >= 48 && event.keyCode <= 57) {
-            input = input + String.fromCharCode(event.keyCode);
-            inputDisplay.innerHTML = input;
+        let keyActs = {
+            8: "remove",
+            13: "calculate",
+            61: "calculate"
         }
+        if (event.keyCode >= 48 && event.keyCode <= 57) {
+            if (removeOnEnter == true) {
+                removeOnEnter = false;
+                input = "";
+            }
+            input = input + String.fromCharCode(event.keyCode);
+        } else if (event.keyCode in keyActs) {
+            input = keyInput(keyActs[event.keyCode], input);
+        }
+        inputDisplay.innerHTML = input;
     });
 });
