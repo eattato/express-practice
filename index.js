@@ -2,6 +2,7 @@ const fs = require("fs");
 const express = require("express");
 const bodyParser = require("body-parser");
 const multer = require("multer");
+const request = require("request");
 
 const app = express();
 app.use(bodyParser.urlencoded({extended: false}));
@@ -379,11 +380,27 @@ app.post("/public", upload.single("file"), (req, res) => {
     res.send("file uploaded");
 });
 
+app.post("/crawl", (req, res) => {
+    let url = req.body.url;
+    if (url != null) {
+        let option = {
+            method: "GET",
+            uri: url,
+            headers: {"User-Agent": "Mozilla/5.0"},
+            encoding: null
+        };
+        request(option).pipe(fs.createWriteStream(__dirname +"/upload/download.png"))
+    } else {
+        res.send("url is required")
+    }
+});
+
 console.log(__dirname);
 app.use("/operation", express.static(__dirname + "/pages/calc"));
 //app.use("/operation", express.static(__dirname + "/pages/calculator/public/index.html"));
 app.use("/naver", express.static(__dirname + "/pages/naver"));
 app.use("/public", express.static(__dirname + "/public"));
+app.use("/crawl", express.static(__dirname + "/pages/crawl"));
 
 let server = app.listen(8888, () => {
     console.log("Server is running now");
