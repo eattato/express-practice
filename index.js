@@ -1,14 +1,16 @@
 const fs = require("fs");
 const express = require("express");
 const bodyParser = require("body-parser");
-const { resolveSoa } = require("dns");
-const e = require("express");
-const { Console } = require("console");
+const multer = require("multer");
 
 const app = express();
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.use(bodyParser.text());
+
+const upload = multer({ 
+    //dest: __dirname + "/upload", // 이미지 업로드 경로
+}); 
 
 String.prototype.format = function() {
     var result = this;
@@ -58,90 +60,6 @@ app.get("/umjunsik", (req, res) => {
     res.send(content);
 });
 
-app.get("/sum/:a/:b", (req, res) => {
-    let notNum = false;
-    for (let ind in req.params) {
-        if (isNaN(req.params[ind]) == true) {
-            notNum = true;
-            break;
-        }
-    }
-    if (notNum == false) {
-        let result = Number(req.params.a) + Number(req.params.b);
-        res.send("result: {}".format(result));
-    } else {
-        res.send("one or two parameters are not number");
-    }
-});
-
-app.get("/min/:a/:b", (req, res) => {
-    let notNum = false;
-    for (let ind in req.params) {
-        if (isNaN(req.params[ind]) == true) {
-            notNum = true;
-            break;
-        }
-    }
-    if (notNum == false) {
-        let result = Number(req.params.a) - Number(req.params.b);
-        res.send("result: {}".format(result));
-    } else {
-        res.send("one or two parameters are not number");
-    }
-});
-
-app.get("/mult/:a/:b", (req, res) => {
-    let notNum = false;
-    for (let ind in req.params) {
-        if (isNaN(req.params[ind]) == true) {
-            notNum = true;
-            break;
-        }
-    }
-    if (notNum == false) {
-        let result = Number(req.params.a) * Number(req.params.b);
-        res.send("result: {}".format(result));
-    } else {
-        res.send("one or two parameters are not number");
-    }
-});
-
-app.get("/div/:a/:b", (req, res) => {
-    let notNum = false;
-    for (let ind in req.params) {
-        if (isNaN(req.params[ind]) == true) {
-            notNum = true;
-            break;
-        }
-    }
-    if (notNum == false) {
-        if (Number(req.params.b) != 0) {
-            let result = Number(req.params.a) / Number(req.params.b);
-            res.send("result: {}".format(result));
-        } else {
-            res.send("cannot divide into 0!");
-        }
-    } else {
-        res.send("one or two parameters are not number");
-    }
-});
-
-app.get("/mult3/:a/:b/:c", (req, res) => {
-    let notNum = false;
-    for (let ind in req.params) {
-        if (isNaN(req.params[ind]) == true) {
-            notNum = true;
-            break;
-        }
-    }
-    if (notNum == false) {
-        let result = Number(req.params.a) * Number(req.params.b) * Number(req.params.c);
-        res.send("result: {}".format(result));
-    } else {
-        res.send("one or two parameters are not number");
-    }
-});
-
 app.get("/mungtangee", (req, res) => {
     let notNum = false;
     if (req.query.mte != null) {
@@ -187,26 +105,6 @@ app.get("/get", (req, res) => {
 
 // curl -X POST localhost:8888/add?path=post.txt -d '{\"text\": \"test post\"}'
 // curl -X POST localhost:8888/add?path=post.txt -d "test post!"
-app.post("/add", (req, res) => {
-    let path = req.query.path;
-    let body = req.body;
-    if (path != null) {
-        if (body.text != null) {
-            fs.writeFile("C:\\temp\\{}".format(path), body, {encoding: "utf-8"}, (error, data) => {
-                if (error) {
-                    res.send("sorry, there was a problem during writing file.");
-                } else {
-                    res.send("{} has succesfully added.".format(path));
-                }
-            });
-        } else {
-            res.send("body requires text!");
-            console.log(body);
-        }
-    } else {
-        res.send("please enter the path!");
-    }
-});
 
 app.post("/calc", (req, res) => { // 헤더 : application/x-www-
     let operation = req.body.operation;
@@ -456,10 +354,36 @@ app.get("/naver", (req, res) => {
     res.send("");
 });
 
+// 위에서 선언한 upload 객체 사용, 지정한 위치로 파일을 받는다.
+app.post("/public", upload.single("file"), (req, res) => {
+    let data = null;
+    let file = req.file;
+    let buffer =  new Buffer.from(file.buffer, "base64");
+
+    let extension = "jpg";
+    if (req.body != null) {
+        // console.log(req.body);
+        data = JSON.parse(req.body.body);
+        if (data.extension != null) {
+            extension = data.extension;
+        }
+    }
+
+    fs.writeFile(__dirname + "/upload/image." + extension, buffer, (error) => {
+        if (error) {
+            console.log("error occured: " + error);
+        } else {
+            console.log("image saved");
+        }
+    });
+    res.send("file uploaded");
+});
+
 console.log(__dirname);
 app.use("/operation", express.static(__dirname + "/pages/calc"));
 //app.use("/operation", express.static(__dirname + "/pages/calculator/public/index.html"));
 app.use("/naver", express.static(__dirname + "/pages/naver"));
+app.use("/public", express.static(__dirname + "/public"));
 
 let server = app.listen(8888, () => {
     console.log("Server is running now");

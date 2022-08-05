@@ -1,0 +1,65 @@
+* {
+    margin: 0;
+    padding: 0;
+    color: black;
+}
+a {
+    text-decoration: none;
+}
+
+.cover {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+}
+
+form {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+}
+
+.cover img {
+    display: none;
+    position: absolute;
+    width: 100%;
+}
+
+#file {
+    position: absolute;
+    width: 100px;
+    height: 30px;
+    visibility: hidden;
+    z-index: 1;
+}
+
+label {
+    position: absolute;
+    width: 100px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    z-index: 1;
+    background-color: gray;
+    border-radius: 5px;
+}
+
+#button {
+    display: none;
+    position: absolute;
+    width: 100px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    z-index: 1;
+    background-color: gray;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 2px solid lightgray;
+}
